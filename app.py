@@ -3,7 +3,6 @@ import google.genai as genai
 from google.genai import types
 import pandas as pd
 import json
-import io
 import socket
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
@@ -11,7 +10,7 @@ from streamlit_gsheets import GSheetsConnection
 # 1. Page Configuration
 st.set_page_config(page_title="AI Candidate Profile Builder", page_icon="💼", layout="wide")
 
-# 2. Securely Retrieve the API Key from Streamlit Secrets
+# 2. Securely Retrieve the Gemini API Key from Streamlit Secrets
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -22,26 +21,22 @@ else:
 st.title("💼 AI Candidate Profile Builder")
 st.write("This application is open to everyone. Define your custom columns, upload applicant files, and watch them sync directly to your Google Sheet.")
 
-# Sidebar Configuration
 with st.sidebar:
     st.header("⚙️ System Control")
     st.success("🔑 Gemini 3.6 Flash Active")
     st.write("---")
-    st.success("🔗 Google Sheet Target Linked")
+    st.success("🔗 Google Sheet Authorized")
 
-# 4. Storage Function with Explicitly Hardcoded URL Link Strings & Cache Wiping
+# 4. Streamlined Storage Function using Repository Configurations
 def append_candidate_to_google_sheet(extracted_profiles, defined_columns):
     """Saves candidate records directly onto your tracking cloud Google Sheet spreadsheet."""
     if not extracted_profiles:
         return
         
-    target_url = "https://docs.google.com/spreadsheets/d/1X9iLsxqiHwqiyC7Vl6MOlmaF2bARonjkifyXILuTD_Y/edit?usp=sharing"
-        
     try:
-        # Convert the batch records list to a standard Pandas Dataframe
         new_df = pd.DataFrame(extracted_profiles)
         
-        # Structure out standard operational metadata logging data fields onto the row layout
+        # Structure out metadata columns
         hostname = socket.gethostname()
         try:
             ip_address = socket.gethostbyname(hostname)
@@ -49,7 +44,6 @@ def append_candidate_to_google_sheet(extracted_profiles, defined_columns):
             ip_address = "Unknown IP"
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Enforce column tracking order alignment: HR Custom Columns -> Structural Metadata Logs
         new_df["Saved Timestamp"] = current_time
         new_df["Device Name"] = hostname
         new_df["Uploader IP"] = ip_address
@@ -57,29 +51,25 @@ def append_candidate_to_google_sheet(extracted_profiles, defined_columns):
         final_cols_order = defined_columns + ["Source File Name", "Saved Timestamp", "Device Name", "Uploader IP"]
         new_df = new_df.reindex(columns=final_cols_order)
         
-        # Establish Google Sheet sync tunnel connection pipelines
+        # Establish Google Sheet sync tunnel connection using the secrets configuration
         conn = st.connection("gsheets", type=GSheetsConnection)
         
         try:
-            # FIX: We read existing data with ttl=0 to bypass all caching and force a fresh cloud pull
-            existing_df = conn.read(spreadsheet=target_url, ttl=0)
-            
-            # Clean up the incoming sheet data
+            # Reads using the repository sheet configuration blueprint directly
+            existing_df = conn.read(ttl=0)
             if existing_df is not None:
                 existing_df = existing_df.dropna(how='all')
             
             if existing_df is None or existing_df.empty:
                 updated_df = new_df
             else:
-                # Merge existing data rows with new extraction rows seamlessly
                 updated_df = pd.concat([existing_df, new_df], ignore_index=True)
         except Exception:
-            # Fallback block executes if handling a completely empty fresh Google Sheet
             updated_df = new_df
             
-        # Write back data rows using the explicit URL string
-        conn.update(spreadsheet=target_url, data=updated_df)
-        st.toast("💾 Candidate entries appended to Google Sheet successfully!", icon="☁️")
+        # Pushes data straight back to your live tracking database
+        conn.update(data=updated_df)
+        st.success("🎉 Candidate entries successfully appended to Google Sheet!")
     except Exception as e:
         st.error(f"Cloud Sheet Synchronization Failure: {str(e)}")
 
@@ -91,7 +81,6 @@ custom_columns_input = st.text_area(
     value=default_columns,
     key="data_points_input"
 )
-
 column_list = [col.strip() for col in custom_columns_input.split(",") if col.strip()]
 
 # 6. File Uploader Interface
@@ -102,11 +91,10 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-# Initialize reactive workspace session state grids
 if "custom_database" not in st.session_state:
     st.session_state.custom_database = []
     
-# 7. Multimodal Data Extraction Logic
+# 7. Data Extraction Execution Logic
 if uploaded_files:
     if st.button("🚀 Process Documents & Sync to Sheet", type="primary"):
         progress_bar = st.progress(0)
@@ -145,9 +133,8 @@ if uploaded_files:
                 st.error(f"Error processing {uploaded_file.name}: {str(e)}")
             progress_bar.progress((idx + 1) / len(uploaded_files))
             
-        status_text.text("✅ Batch data extraction processing completed!")
+        status_text.text("✅ Batch processing completed!")
         
-        # Fire appended operations processing right into the cloud database
         if batch_records:
             append_candidate_to_google_sheet(batch_records, column_list)
             
@@ -161,7 +148,6 @@ if st.session_state.custom_database:
     
     final_ordered_columns = column_list + ["Source File Name"]
     df = df.reindex(columns=final_ordered_columns)
-    
     st.dataframe(df, use_container_width=True)
     
     if st.button("🗑️ Clear Local Summary Grid View"):
