@@ -29,14 +29,13 @@ with st.sidebar:
     st.write("---")
     st.success("🔗 Google Sheet Target Linked")
 
-# 4. Storage Function with Explicitly Hardcoded URL Link Strings
+# 4. Storage Function with Explicitly Hardcoded URL Link Strings & Cache Wiping
 def append_candidate_to_google_sheet(extracted_profiles, defined_columns):
     """Saves candidate records directly onto your tracking cloud Google Sheet spreadsheet."""
     if not extracted_profiles:
         return
         
-    # YOUR EXPLICIT GOOGLE SHEET LINK PLACED RIGHT HERE:
-    target_url = "https://docs.google.com/spreadsheets/d/1X9iLsxqiHwqiyC7Vl6MOlmaF2bARonjkifyXILuTD_Y/edit?pli=1&gid=0#gid=0"
+    target_url = "https://docs.google.com/spreadsheets/d/1X9iLsxqiHwqiyC7Vl6MOlmaF2bARonjkifyXILuTD_Y/edit?usp=sharing"
         
     try:
         # Convert the batch records list to a standard Pandas Dataframe
@@ -62,16 +61,20 @@ def append_candidate_to_google_sheet(extracted_profiles, defined_columns):
         conn = st.connection("gsheets", type=GSheetsConnection)
         
         try:
-            # We use the explicit URL string directly inside the call
+            # FIX: We read existing data with ttl=0 to bypass all caching and force a fresh cloud pull
             existing_df = conn.read(spreadsheet=target_url, ttl=0)
-            existing_df = existing_df.dropna(how='all')
             
-            if existing_df.empty:
+            # Clean up the incoming sheet data
+            if existing_df is not None:
+                existing_df = existing_df.dropna(how='all')
+            
+            if existing_df is None or existing_df.empty:
                 updated_df = new_df
             else:
+                # Merge existing data rows with new extraction rows seamlessly
                 updated_df = pd.concat([existing_df, new_df], ignore_index=True)
         except Exception:
-            # Fallback block executes seamlessly if handling a fresh blank Google Sheet
+            # Fallback block executes if handling a completely empty fresh Google Sheet
             updated_df = new_df
             
         # Write back data rows using the explicit URL string
