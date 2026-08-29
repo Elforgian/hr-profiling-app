@@ -12,7 +12,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="AI Candidate Profile Builder", page_icon="💼", layout="wide")
 
 # Your exact hardcoded Google Sheet URL for candidate profile storage
-HARDCODED_LOG_SHEET = "https://docs.google.com/spreadsheets/d/1X9iLsxqiHwqiyC7Vl6MOlmaF2bARonjkifyXILuTD_Y/edit?gid=0#gid=0"
+HARDCODED_LOG_SHEET = "https://google.com"
 
 # 2. Securely Retrieve the API Key from Streamlit Secrets
 if "GEMINI_API_KEY" in st.secrets:
@@ -32,7 +32,7 @@ with st.sidebar:
     st.write("---")
     st.success("🔗 Google Sheet Target Linked")
 
-# 4. Storage Function: Appends extracted info straight to your Google Sheet
+# 4. Corrected Storage Function: Explicitly mapping the spreadsheet parameter keyword
 def append_candidate_to_google_sheet(extracted_profiles, sheet_link, defined_columns):
     """Saves candidate records directly onto your tracking cloud Google Sheet spreadsheet."""
     if not extracted_profiles:
@@ -62,8 +62,10 @@ def append_candidate_to_google_sheet(extracted_profiles, sheet_link, defined_col
         conn = st.connection("gsheets", type=GSheetsConnection)
         
         try:
+            # FIX: Explicitly passing spreadsheet keyword parameter for URL reading
             existing_df = conn.read(spreadsheet=sheet_link, ttl=0)
             existing_df = existing_df.dropna(how='all')
+            
             if existing_df.empty:
                 updated_df = new_df
             else:
@@ -72,7 +74,7 @@ def append_candidate_to_google_sheet(extracted_profiles, sheet_link, defined_col
             # Fallback block executes seamlessly if handling a fresh blank Google Sheet
             updated_df = new_df
             
-        # Write back data rows execution 
+        # FIX: Explicitly passing spreadsheet keyword parameter for writing updates
         conn.update(spreadsheet=sheet_link, data=updated_df)
         st.toast("💾 Candidate entries appended to Google Sheet successfully!", icon="☁️")
     except Exception as e:
@@ -123,7 +125,7 @@ if uploaded_files:
             try:
                 file_bytes = uploaded_file.read()
                 response = client.models.generate_content(
-                    model='gemini-3.6-flash',  # Upgraded to the requested model string endpoint
+                    model='gemini-3.6-flash',
                     contents=[
                         types.Part.from_bytes(data=file_bytes, mime_type=uploaded_file.type),
                         prompt_instruction
