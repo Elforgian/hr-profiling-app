@@ -8,7 +8,7 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 # 1. Page Configuration
-st.set_page_config(page_title="AI Candidate Profile Builder", page_icon="💼", layout="wide")
+st.set_page_config(page_title="DIRD HR - Candidate Profiling App", page_icon="💼", layout="wide")
 
 # 2. Securely Retrieve the Gemini API Key from Streamlit Secrets
 if "GEMINI_API_KEY" in st.secrets:
@@ -18,8 +18,8 @@ else:
     st.stop()
 
 # 3. Main Interface Layout
-st.title("💼 AI Candidate Profile Builder")
-st.write("This application is open to everyone. Define your custom columns, upload applicant files, and watch them sync directly to your Google Sheet.")
+st.title("💼 DIRD HR - Candidate Profiling App")
+st.write("Define your custom columns, upload applicant CVs (1 or 2 at a time), and download as Excel File.")
 
 with st.sidebar:
     st.header("⚙️ System Control")
