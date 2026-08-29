@@ -12,21 +12,28 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="AI Candidate Profile Builder", page_icon="💼", layout="wide")
 
 # Hardcoded Google Sheet URL for secure background activity logs
-HARDCODED_LOG_SHEET = "https://docs.google.com/spreadsheets/d/1X1sAZF3__zHsDaYkNPnrZ2rZiS3fkB5aAe1_Zg2F5vQ/edit?gid=0#gid=0"
+HARDCODED_LOG_SHEET = "https://google.com"
 
-# 2. Main Interface Layout
+# 2. Securely Retrieve the API Key from Streamlit Secrets
+# This completely bypasses the need for manual user input in the sidebar
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+else:
+    st.error("🔑 API Key Missing! Please add `GEMINI_API_KEY = 'your_key'` inside your Streamlit Cloud Secrets settings panel.")
+    st.stop()
+
+# 3. Main Interface Layout
 st.title("💼 AI Candidate Profile Builder")
 st.write("This application is open to everyone. Define your custom columns, upload applicant files, and download your structured Excel sheet.")
 
-# Sidebar Configuration for API Management
+# Sidebar Configuration (Simplified - API key input box removed)
 with st.sidebar:
     st.header("⚙️ System Control")
-    api_key = st.text_input("Enter Google Gemini API Key", type="password")
-    st.markdown("[Get a Gemini API Key here](https://aistudio.google.com/)")
+    st.success("🔑 Gemini API Key Active (Loaded from Secrets)")
     st.write("---")
     st.success("🔗 Background Activity Log Connected Securely")
 
-# 3. Background Cloud Activity Logging Function
+# 4. Background Cloud Activity Logging Function
 def log_user_activity_to_sheets(file_count, sheet_link):
     """Logs runtime execution details directly into the hardcoded Google Sheet in the background."""
     try:
@@ -56,7 +63,7 @@ def log_user_activity_to_sheets(file_count, sheet_link):
     except Exception:
         pass  # Fails silently to ensure no frontend service breaks for users
 
-# 4. Custom Data Points Configuration
+# 5. Custom Data Points Configuration
 st.subheader("1. Custom Database Columns")
 default_columns = "Full Name, Email, Phone Number, Total Years of Experience, Highest Level of Education, Technical Skills"
 custom_columns_input = st.text_area(
@@ -67,7 +74,7 @@ custom_columns_input = st.text_area(
 
 column_list = [col.strip() for col in custom_columns_input.split(",") if col.strip()]
 
-# 5. File Uploader Interface
+# 6. File Uploader Interface
 st.subheader("2. Upload Scanned CVs / Cover Letters")
 uploaded_files = st.file_uploader(
     "Drag and drop PDFs or images here:", 
@@ -79,11 +86,9 @@ uploaded_files = st.file_uploader(
 if "custom_database" not in st.session_state:
     st.session_state.custom_database = []
     
-# 6. Multimodal Data Extraction Logic
+# 7. Multimodal Data Extraction Logic
 if uploaded_files:
-    if not api_key:
-        st.error("Please enter a valid Gemini API key in the left sidebar to activate document processing.")
-    elif st.button("🚀 Process Documents & Generate Excel Data", type="primary"):
+    if st.button("🚀 Process Documents & Generate Excel Data", type="primary"):
         progress_bar = st.progress(0)
         status_text = st.empty()
         
@@ -129,7 +134,7 @@ if uploaded_files:
             
         st.rerun()
 
-# 7. Interactive UI Spreadsheet Grid & File Compilation
+# 8. Interactive UI Spreadsheet Grid & File Compilation
 if st.session_state.custom_database:
     st.write("---")
     st.subheader("📋 Generated Candidate Database Grid")
