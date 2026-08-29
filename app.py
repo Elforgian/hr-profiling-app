@@ -15,7 +15,6 @@ st.set_page_config(page_title="AI Candidate Profile Builder", page_icon="💼", 
 HARDCODED_LOG_SHEET = "https://google.com"
 
 # 2. Securely Retrieve the API Key from Streamlit Secrets
-# This completely bypasses the need for manual user input in the sidebar
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -26,12 +25,12 @@ else:
 st.title("💼 AI Candidate Profile Builder")
 st.write("This application is open to everyone. Define your custom columns, upload applicant files, and download your structured Excel sheet.")
 
-# Sidebar Configuration (Simplified - API key input box removed)
+# Sidebar Configuration
 with st.sidebar:
     st.header("⚙️ System Control")
-    st.success("🔑 Gemini API Key Active (Loaded from Secrets)")
+    st.success("🔑 Gemini API Key Active")
     st.write("---")
-    st.success("🔗 Background Activity Log Connected Securely")
+    st.success("🔗 Background Activity Log Connected")
 
 # 4. Background Cloud Activity Logging Function
 def log_user_activity_to_sheets(file_count, sheet_link):
@@ -45,7 +44,6 @@ def log_user_activity_to_sheets(file_count, sheet_link):
             
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Structure the new log entry row matching the sheet layout
         new_row = pd.DataFrame([{
             "Timestamp": current_time,
             "Device Hostname": hostname,
@@ -53,15 +51,12 @@ def log_user_activity_to_sheets(file_count, sheet_link):
             "Files Processed": int(file_count)
         }])
         
-        # Connect to Google Sheets through Streamlit's connection architecture
         conn = st.connection("gsheets", type=GSheetsConnection)
         existing_df = conn.read(spreadsheet=sheet_link, ttl=0)
         updated_df = pd.concat([existing_df, new_row], ignore_index=True)
-        
-        # Force cloud sync write-back execution
         conn.update(spreadsheet=sheet_link, data=updated_df)
     except Exception:
-        pass  # Fails silently to ensure no frontend service breaks for users
+        pass
 
 # 5. Custom Data Points Configuration
 st.subheader("1. Custom Database Columns")
@@ -82,7 +77,7 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-# Initialize data grid storage across live interactive clicks
+# Initialize data grid storage in live session memory
 if "custom_database" not in st.session_state:
     st.session_state.custom_database = []
     
@@ -108,7 +103,7 @@ if uploaded_files:
             try:
                 file_bytes = uploaded_file.read()
                 response = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='gemini-1.5-flash',  # Globally stable multimodal model routing
                     contents=[
                         types.Part.from_bytes(data=file_bytes, mime_type=uploaded_file.type),
                         prompt_instruction
@@ -118,7 +113,6 @@ if uploaded_files:
                 extracted_json = json.loads(response.text)
                 extracted_json["Source File Name"] = uploaded_file.name
                 
-                # Cache results in immediate memory workspace
                 st.session_state.custom_database.append(extracted_json)
                 new_records_count += 1
                 
@@ -128,13 +122,13 @@ if uploaded_files:
             
         status_text.text("✅ Data processing complete!")
         
-        # Fire silent background log directly to your hardcoded Google Sheet
+        # Fire silent background log metrics to your Google Sheet
         if new_records_count > 0:
             log_user_activity_to_sheets(new_records_count, HARDCODED_LOG_SHEET)
             
-        st.rerun()
+        # FIX: Removed st.rerun() here to allow elements to display immediately!
 
-# 8. Interactive UI Spreadsheet Grid & File Compilation
+# 8. UI Grid Layout Display & Dynamic File Downloader Engine
 if st.session_state.custom_database:
     st.write("---")
     st.subheader("📋 Generated Candidate Database Grid")
@@ -143,13 +137,15 @@ if st.session_state.custom_database:
     final_ordered_columns = column_list + ["Source File Name"]
     df = df.reindex(columns=final_ordered_columns)
     
+    # Display the compiled candidate list directly in the interface
     st.dataframe(df, use_container_width=True)
     
-    # Formulate binary output buffer for the spreadsheet file download
+    # Render Excel output bytes stream
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Extracted Candidates')
     
+    # The actual browser-native save prompt trigger button
     st.download_button(
         label="📥 Download Extracted Candidates Excel Sheet",
         data=buffer.getvalue(),
